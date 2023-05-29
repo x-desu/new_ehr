@@ -16,6 +16,7 @@ const Middle = (props) => {
   const [buffer, setBuffer] = useState(null);
   const [filehash, setFilehash] = useState("");
   const [contract, setContract] = useState(null);
+  const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
     const loadWeb3 = async () => {
@@ -34,7 +35,31 @@ const Middle = (props) => {
     const loadBlockchainData = async () => {
       const web3 = window.web3;
       const accounts = await web3.eth.getAccounts();
-      setAccount(accounts[0]);
+      const doctorAddress = accounts[0];
+      const doctorName = props.values.state.doctor;
+
+      // Load existing doctors from local storage or initialize an empty array
+      const existingDoctors = JSON.parse(localStorage.getItem("doctors")) || [];
+
+      // Check if the doctor's address already exists in the array
+      const isDoctorExists = existingDoctors.some(
+        (doctor) => doctor.address === doctorAddress
+      );
+
+      if (!isDoctorExists) {
+        // Create a new doctor object with address and name
+        const newDoctor = {
+          address: doctorAddress,
+          name: doctorName,
+        };
+
+        // Add the new doctor to the existing array
+        const updatedDoctors = [...existingDoctors, newDoctor];
+
+        // Save the updated array to local storage
+        localStorage.setItem("doctors", JSON.stringify(updatedDoctors));
+      }
+      setAccount(doctorAddress);
       const networkId = await web3.eth.net.getId();
       const networkData = File.networks[networkId];
       if (networkData) {
@@ -45,6 +70,14 @@ const Middle = (props) => {
         setContract(contractInstance);
         const filehash = await contractInstance.methods.get().call();
         setFilehash(filehash);
+
+        const storedDoctors = JSON.parse(localStorage.getItem("doctors")) || [];
+        const currentDoctor = storedDoctors.find(
+          (doctor) => doctor.address === doctorAddress
+        );
+        if (currentDoctor && currentDoctor.address === doctorAddress) {
+          setHasAccess(currentDoctor.hasAccess);
+        }
       } else {
         window.alert("Smart contract not deployed to detected network.");
       }
@@ -55,41 +88,14 @@ const Middle = (props) => {
     });
   }, []);
 
+  console.log("filehash access", filehash, hasAccess);
+
   const docclick = () => {
-    window.open(
-      "https://ipfs.infura.io/ipfs/QmUQJrygU9rh3AfvWzs61hLkeEkJtZHnyR8LMQVAjTTcF5",
-      "_blank"
-    );
-  };
-
-  const captureFile = (event) => {
-    event.preventDefault();
-    const file = event.target.files[0];
-    const reader = new window.FileReader();
-    reader.readAsArrayBuffer(file);
-    reader.onloadend = () => {
-      setBuffer(Buffer(reader.result));
-    };
-  };
-
-  const onSubmit = (event) => {
-    event.preventDefault();
-    console.log("Submitting file to ipfs...");
-    ipfs.add(buffer, (error, result) => {
-      console.log("Ipfs result", result);
-      const filehash = result[0].hash;
-      setFilehash(filehash);
-      if (error) {
-        console.error(error);
-        return;
-      }
-      contract.methods
-        .set(result[0].hash)
-        .send({ from: account })
-        .then((r) => {
-          setFilehash(result[0].hash);
-        });
-    });
+    if (hasAccess) {
+      window.open(`https://ipds.infura-ipfs.io/ipfs/${filehash}`, "_blank");
+    } else {
+      alert("You do not have access to view the records.");
+    }
   };
 
   return (
@@ -107,7 +113,7 @@ const Middle = (props) => {
           <main role="main" className="col-lg-12 d-flex text-center">
             <div className="content mr-auto ml-auto">
               <p>&nbsp;</p>
-              <h2 className="ur">Welcome Dr. {props.doctor}</h2>
+              <h2 className="ur">Welcome Dr. {props.values.state.doctor}</h2>
               <br />
               <br />
               <h3>View Patient's Records</h3>

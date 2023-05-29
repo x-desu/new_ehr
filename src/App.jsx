@@ -9,7 +9,7 @@ const App = () => {
   const [state, setState] = useState({
     doctor: "",
     patient: "",
-    age: 1,
+    age: 0,
     step: 1,
     role: "",
     hash: "",

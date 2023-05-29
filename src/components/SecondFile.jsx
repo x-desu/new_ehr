@@ -24,6 +24,7 @@ const SecondFile = (props) => {
   const [buffer, setBuffer] = useState(null);
   const [filehash, setFilehash] = useState("");
   const [contract, setContract] = useState(null);
+  const [doctors, setDoctors] = useState([]);
   const [visibility, setVisibility] = useState("hidden");
 
   useEffect(() => {
@@ -40,6 +41,12 @@ const SecondFile = (props) => {
       }
     };
 
+    const loadDoctors = () => {
+      // Retrieve doctors from local storage
+      const existingDoctors = JSON.parse(localStorage.getItem("doctors")) || [];
+      setDoctors(existingDoctors);
+    };
+
     const loadBlockchainData = async () => {
       const web3 = window.web3;
       const accounts = await web3.eth.getAccounts();
@@ -54,6 +61,27 @@ const SecondFile = (props) => {
         setContract(contractInstance);
         const filehash = await contractInstance.methods.get().call();
         setFilehash(filehash);
+        // Event listener for AccessGranted event
+        contractInstance.events.AccessGranted({}, (error, event) => {
+          if (!error) {
+            console.log("Access granted event received:", event);
+            // Perform any necessary actions when access is granted
+            // For example, update the list of doctors or display a notification
+          } else {
+            console.error("Access granted event error:", error);
+          }
+        });
+
+        // Event listener for AccessRevoked event
+        contractInstance.events.AccessRevoked({}, (error, event) => {
+          if (!error) {
+            console.log("Access revoked event received:", event);
+            // Perform any necessary actions when access is revoked
+            // For example, update the list of doctors or display a notification
+          } else {
+            console.error("Access revoked event error:", error);
+          }
+        });
       } else {
         window.alert("Smart contract not deployed to detected network.");
       }
@@ -61,6 +89,7 @@ const SecondFile = (props) => {
 
     loadWeb3().then(() => {
       loadBlockchainData();
+      loadDoctors();
     });
   }, []);
 
@@ -103,6 +132,30 @@ const SecondFile = (props) => {
       reader.onerror = reject;
       reader.readAsArrayBuffer(file);
     });
+  };
+
+  const grantAccess = (doctorAddress) => {
+    const existingDoctors = JSON.parse(localStorage.getItem("doctors")) || [];
+    const updatedDoctors = existingDoctors.map((doctor) => {
+      if (doctor.address === doctorAddress) {
+        return { ...doctor, hasAccess: true };
+      }
+      return doctor;
+    });
+    localStorage.setItem("doctors", JSON.stringify(updatedDoctors));
+    setDoctors(updatedDoctors);
+  };
+
+  const revokeAccess = (doctorAddress) => {
+    const existingDoctors = JSON.parse(localStorage.getItem("doctors")) || [];
+    const updatedDoctors = existingDoctors.map((doctor) => {
+      if (doctor.address === doctorAddress) {
+        return { ...doctor, hasAccess: false };
+      }
+      return doctor;
+    });
+    localStorage.setItem("doctors", JSON.stringify(updatedDoctors));
+    setDoctors(updatedDoctors);
   };
 
   return (
@@ -148,6 +201,28 @@ const SecondFile = (props) => {
                   Submitting to IPFS....Please Wait For A While
                 </div>
               </form>
+              <h3>Doctors:</h3>
+              <div className="card-container">
+                {doctors.map((doctor, index) => (
+                  <div key={index} className="card">
+                    <div className="card-header">{doctor.name}</div>
+                    <div className="card-body">
+                      <button
+                        onClick={() => revokeAccess(doctor.address)}
+                        className="btn btn-primary"
+                      >
+                        Revoke
+                      </button>
+                      <button
+                        onClick={() => grantAccess(doctor.address)}
+                        className="btn btn-primary"
+                      >
+                        Grant
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </main>
         </div>

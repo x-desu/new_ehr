@@ -1,4 +1,6 @@
 import React, { useContext } from "react";
+import Web3 from "web3";
+import File from "../../build/contracts/File.json";
 import "../loginStyles.css";
 import { AppContext } from "../App";
 const LoginForm = ({ values, handleChange, nextStep, docnextStep }) => {
