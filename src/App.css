@@ -4,7 +4,29 @@
   padding: 2rem;
   text-align: center;
 }
+.card-container {
+  display: flex;
+  flex-wrap: wrap;
+}
 
+.card {
+  width: 200px;
+  margin: 10px;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.card-header {
+  font-weight: bold;
+}
+
+.card-body {
+  margin-top: 10px;
+}
+.card .btn {
+  margin-top: 10px;
+}
 .logo {
   height: 6em;
   padding: 1.5em;
