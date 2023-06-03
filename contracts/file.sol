@@ -1,4 +1,5 @@
-pragma solidity ^0.5.0;
+// SPDX-License-Identifier: GPL-3.0
+pragma solidity 0.8.20;
 
 contract File {
     string public filehash;
@@ -15,13 +16,16 @@ contract File {
         return filehash;
     }
     
-function grantAccess(address doctor) public {
-    accessPermissions[doctor] = true;
-    emit AccessGranted(doctor); // Add this line to log the event
-}
+    function grantAccess(address doctor) public {
+        accessPermissions[doctor] = true;
+        emit AccessGranted(doctor);
+    }
 
-function revokeAccess(address doctor) public {
-    accessPermissions[doctor] = false;
-    emit AccessRevoked(doctor); // Add this line to log the event
-}
+    function revokeAccess(address doctor) public {
+        accessPermissions[doctor] = false;
+        emit AccessRevoked(doctor);
+    }
+     function helloWorld() public pure returns (string memory) {
+        return "Hello, World!";
+    }
 }

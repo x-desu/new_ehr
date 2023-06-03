@@ -1,19 +1,20 @@
 import React, { useContext } from "react";
-import Web3 from "web3";
-import File from "../../build/contracts/File.json";
-import "../loginStyles.css";
+import { useNavigate } from "react-router-dom";
 import { AppContext } from "../App";
-const LoginForm = ({ values, handleChange, nextStep, docnextStep }) => {
-  const { state, setState } = useContext(AppContext);
-  console.log("state", state);
+import "../loginStyles.css";
+
+const LoginForm = () => {
+  const { state, handleChange } = useContext(AppContext);
+  const navigate = useNavigate();
+
   const continueForm = (e) => {
     e.preventDefault();
-    nextStep();
+    navigate("/patient");
   };
 
   const docContinueForm = (e) => {
     e.preventDefault();
-    docnextStep();
+    navigate("/doctor");
   };
 
   return (

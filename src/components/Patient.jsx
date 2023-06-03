@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import { AppContext } from "../App";
 import "../App.css";
+import { useNavigate } from "react-router-dom";
 import Web3 from "web3";
 import File from "../../build/contracts/File.json";
 import "../loginStyles.css";
@@ -18,8 +20,10 @@ const ipfs = create({
   },
 });
 
-const SecondFile = (props) => {
-  console.log("patient", props.values.state);
+const Patient = (props) => {
+  const { state } = useContext(AppContext);
+  console.log(state);
+  const navigate = useNavigate();
   const [account, setAccount] = useState("");
   const [buffer, setBuffer] = useState(null);
   const [filehash, setFilehash] = useState("");
@@ -39,12 +43,25 @@ const SecondFile = (props) => {
           "Non-Ethereum browser detected. You should consider trying MetaMask!"
         );
       }
-    };
+      const fetchDoctors = async () => {
+        try {
+          const response = await fetch("http://localhost:3000/doctors");
+          if (response.ok) {
+            const data = await response.json();
+            const uniqueDoctors = data.filter(
+              (doctor, index, self) =>
+                index === self.findIndex((t) => t.address === doctor.address)
+            );
+            setDoctors(uniqueDoctors);
+          } else {
+            console.error("Failed to fetch doctors");
+          }
+        } catch (error) {
+          console.error("Error fetching doctors", error);
+        }
+      };
 
-    const loadDoctors = () => {
-      // Retrieve doctors from local storage
-      const existingDoctors = JSON.parse(localStorage.getItem("doctors")) || [];
-      setDoctors(existingDoctors);
+      fetchDoctors();
     };
 
     const loadBlockchainData = async () => {
@@ -52,36 +69,16 @@ const SecondFile = (props) => {
       const accounts = await web3.eth.getAccounts();
       setAccount(accounts[0]);
       const networkId = await web3.eth.net.getId();
+      console.log("Network ID:", networkId);
       const networkData = File.networks[networkId];
+      console.log("Network Data:", networkData);
+
       if (networkData) {
         const contractInstance = new web3.eth.Contract(
           File.abi,
           networkData.address
         );
         setContract(contractInstance);
-        const filehash = await contractInstance.methods.get().call();
-        setFilehash(filehash);
-        // Event listener for AccessGranted event
-        contractInstance.events.AccessGranted({}, (error, event) => {
-          if (!error) {
-            console.log("Access granted event received:", event);
-            // Perform any necessary actions when access is granted
-            // For example, update the list of doctors or display a notification
-          } else {
-            console.error("Access granted event error:", error);
-          }
-        });
-
-        // Event listener for AccessRevoked event
-        contractInstance.events.AccessRevoked({}, (error, event) => {
-          if (!error) {
-            console.log("Access revoked event received:", event);
-            // Perform any necessary actions when access is revoked
-            // For example, update the list of doctors or display a notification
-          } else {
-            console.error("Access revoked event error:", error);
-          }
-        });
       } else {
         window.alert("Smart contract not deployed to detected network.");
       }
@@ -115,7 +112,7 @@ const SecondFile = (props) => {
       console.log("IPFS result", cid.toString());
       setVisibility("hidden");
       setFilehash(cid.toString());
-      props.values.state.hash = cid.toString();
+      state.hash = cid.toString();
       await contract.methods.set(cid.toString()).send({ from: account });
       console.log("File hash stored in the contract");
     } catch (error) {
@@ -133,34 +130,75 @@ const SecondFile = (props) => {
       reader.readAsArrayBuffer(file);
     });
   };
+  // Assuming you have initialized web3 and contractInstance
 
-  const grantAccess = (doctorAddress) => {
-    const existingDoctors = JSON.parse(localStorage.getItem("doctors")) || [];
-    const updatedDoctors = existingDoctors.map((doctor) => {
-      if (doctor.address === doctorAddress) {
-        return { ...doctor, hasAccess: true };
-      }
-      return doctor;
-    });
-    localStorage.setItem("doctors", JSON.stringify(updatedDoctors));
-    setDoctors(updatedDoctors);
+  const goBack = () => {
+    navigate(-1); // Navigate back to the previous page
   };
 
-  const revokeAccess = (doctorAddress) => {
-    const existingDoctors = JSON.parse(localStorage.getItem("doctors")) || [];
-    const updatedDoctors = existingDoctors.map((doctor) => {
-      if (doctor.address === doctorAddress) {
-        return { ...doctor, hasAccess: false };
+  const grantAccess = async (doctorAddress) => {
+    if (contract) {
+      try {
+        await contract.methods
+          .grantAccess(doctorAddress)
+          .send({ from: account });
+        console.log("Access granted successfully.");
+        await contract.events.AccessGranted((error, event) => {
+          if (error) {
+            console.error("Error granting access:", error);
+          } else {
+            console.log("Access granted for", event.returnValues[0]);
+            alert("Access granted for " + event.returnValues[0]);
+          }
+        });
+      } catch (error) {
+        console.error("Error granting access:", error);
       }
-      return doctor;
-    });
-    localStorage.setItem("doctors", JSON.stringify(updatedDoctors));
-    setDoctors(updatedDoctors);
+    }
+  };
+
+  const revokeAccess = async (doctorAddress) => {
+    if (contract) {
+      try {
+        await contract.methods
+          .revokeAccess(doctorAddress)
+          .send({ from: account });
+        console.log("Access revoked successfully.");
+        await contract.events.AccessRevoked((error, event) => {
+          if (error) {
+            console.error("Error revoking access:", error);
+          } else {
+            console.log("Access revoked for", event.returnValues[0]);
+            alert("Access revoked for " + event.returnValues[0]);
+          }
+        });
+      } catch (error) {
+        console.error("Error revoking access:", error);
+      }
+    }
   };
 
   return (
     <div>
       <nav className="navbar navbar-dark fixed-top bg-dark flex-md-nowrap p-0 shadow">
+        <button
+          style={{
+            backgroundColor: "transparent",
+            borderRadius: "0.5rem",
+            border: "none",
+            outline: "none",
+            color: "white",
+            fontSize: "1.5rem",
+            position: "absolute",
+            top: "0",
+            left: "0",
+            margin: "1rem",
+            hover: "pointer",
+          }}
+          onClick={goBack}
+        >
+          back
+        </button>
         <a
           className="navbar-brand col-sm-3 col-md-2 mr-0"
           rel="noopener noreferrer"
@@ -178,9 +216,7 @@ const SecondFile = (props) => {
               <p>&nbsp;</p>
               <h2>Electronic Health Record</h2>
               <br />
-              <h3 className="ur">
-                Welcome Patient {props.values.state.patient}
-              </h3>
+              <h3 className="ur">Welcome Patient {state.patient}</h3>
               <br />
               <br />
 
@@ -231,4 +267,4 @@ const SecondFile = (props) => {
   );
 };
 
-export default SecondFile;
+export default Patient;
